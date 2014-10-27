@@ -1,0 +1,49 @@
+def glycanfrag(smallglypep,breakpt):
+    """
+    Returns the fragments of a glycan.
+
+    :Syntax:
+        [newglypep,bion]=glycanfrag(smallglypep,breakpt)
+
+    :Parameters:
+        smallglypep (string):
+        breakpt (string):
+
+    :Returns:
+        newglypep (string): 
+        bion (string):
+
+    :Examples:
+
+    >>>
+    >>>
+    >>>
+
+    note: ideally we should use linucs
+    """
+
+
+def breakGlyPep(glypepstring):
+    """
+    Returns the string of the peptide, glycan and other non-glycan ptm
+
+    :Syntax:
+        [pepstring,glycanptm,nonglycanptm]=breakGlyPep(glypepstring)
+
+    :Parameters:
+        glypepstring (string)
+
+    :Returns:
+        pepstring (string):
+        glycanptm ():
+        nonglycanptm ():
+
+    :Examples:
+
+    >>>
+    >>>
+    >>> 
+    
+    """
+
+    

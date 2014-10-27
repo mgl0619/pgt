@@ -13,17 +13,17 @@ def splitGlyPep(sgp):
     return string
     
     @Syntax: 
-        [peptide,glycan,nonglycanptm]=splitGlyPep(sgp)
+        sgpelements = splitGlyPep(sgp)
     
     @Params:
         sgp: glycopeptide string, string type
         
     @Retuns:
-        peptide: 
-        glycan:
-        nonglycanptm:
+        sgpelements.peptide: peptide element
+        sgpelements.glycan: glycan element
+        sgpelements.nonglycanptm: non-glycan modification element
     
-    @See also
+    @See also joinGlyMat
     """
     
     # set up regular expression pattern for peptide, non-glycan ptm, glycan
@@ -36,7 +36,7 @@ def splitGlyPep(sgp):
     
     # find peptide sequence and their position in SGP
     peptide = ''.join(pep_pattern.findall(sgp));
-    print peptide
+    #    print peptide
     #    aapos_in_pep = [];
     #    for match in pep_pattern.finditer(sgp):
     #      startpop = match.start();
@@ -62,7 +62,7 @@ def splitGlyPep(sgp):
         glycanpos_in_sgp = []
     else:
         glycanptm = glycan_pattern.findall(sgp);
-        print glycanptm
+        # print glycanptm
         glycanpos_in_sgp = []
         for match in glycan_pattern.finditer(sgp):
            startpop         = match.start()
@@ -75,6 +75,64 @@ def splitGlyPep(sgp):
     return SGPelements(peptide,nonglycanptm,glycanptm,nonglycanpos_in_sgp,
     glycanpos_in_sgp)
     
+def joinGlyPep(pep,gly,glyPos,nonglyMod,nonglyModPos):
+    """Reconstruct the glycopeptide
+    
+    @Syntax: 
+        sgp = joinGlyPep(peptide,glycan,nonglycanptm,glycanpos,modpos)
+    
+    @Params:
+        peptide: peptide backbone
+        glycan: glycan modification
+        nonglycanptm: non-glycan modification
+        
+    @Retuns:
+        sgp: glycopeptide structure in SGP format
+    
+    @See also splitGlyPep
+    """ 
+        
+    if(len(pep)==0): # glycan only
+        sgp =  gly;
+    else:
+        sgp = '';
+        
+        for i in range(len(pep)):
+           print i  
+           sgp = sgp + pep[i]
+           
+           ismodadded = 0;
+           for k in range(len(nonglyModPos)) :
+               singlemodpos = nonglyModPos[k]
+               print singlemodpos
+               if(i==singlemodpos):
+                   sgp = sgp + '<'+nonglyMod[k]+'>'                 
+                   print sgp
+                   ismodadded = 1
+                   break
+           if(ismodadded==1):
+               # nonglyMod.remove(nonglyMod[k])
+               del nonglyMod[k]
+               del nonglyModPos[k]
+               #nonglyModPos.remove(singlemodpos)            
+           
+           isglyadded = 0
+           for j in range(len(glyPos)):
+               singleglypos = glyPos[j]
+              # print singleglypos
+               if(i==singleglypos):
+                   sgp = sgp + gly[j]
+                   isglyadded = 1                   
+                   print sgp
+                   break
+               
+           if(isglyadded==1):
+               del gly[j]
+               del glyPos[j]
+               #gly.remove(gly[j])           
+               #glyPos.remove(singleglypos)               
+    return(sgp)
+            
 testsgp1 =  'GYM<o>KNCT<s>'
 sgptest1 = splitGlyPep(testsgp1) 
 
@@ -90,5 +148,10 @@ sgptest4 = splitGlyPep(testsgp4)
 testsgp5 = 'GYLN{n{n{h{h{h{h}}}{h{h{h}}{h{h}}}}}}CT<s>{n{h{s}}{n{h{s}{f}}}}R'
 sgptest5 = splitGlyPep(testsgp5)     
     
-    
+pep          = 'GYMKNCT';
+gly          = ['{n{h{s}}}']
+glyPos       = [4]
+nonglyMod    = ['o','s']
+nonglyModPos = [2,6]    
+sgptest = joinGlyPep(pep,gly,glyPos,nonglyMod,nonglyModPos)
 
