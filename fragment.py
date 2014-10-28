@@ -132,6 +132,29 @@ def joinGlyPep(pep,gly,glyPos,nonglyMod,nonglyModPos):
                #gly.remove(gly[j])           
                #glyPos.remove(singleglypos)               
     return(sgp)
+    
+def swapAA(pepseq,swapoption):
+    """swap amino acid  
+    
+    @Syntax: 
+        newpepseq = swapAA(pepseq,option)
+    
+    @Params:
+        pepseq: peptide sequence
+        option: swap option.
+        
+    @Retuns:
+        newpepseq: new peptide sequence
+    
+    @Examples:
+     >     
+    
+    @See also splitGlyPep
+    """ 
+    
+    if(swapoption=='random'):
+        
+    
             
 testsgp1 =  'GYM<o>KNCT<s>'
 sgptest1 = splitGlyPep(testsgp1) 
@@ -153,5 +176,5 @@ gly          = ['{n{h{s}}}']
 glyPos       = [4]
 nonglyMod    = ['o','s']
 nonglyModPos = [2,6]    
-sgptest = joinGlyPep(pep,gly,glyPos,nonglyMod,nonglyModPos)
+sgptest      = joinGlyPep(pep,gly,glyPos,nonglyMod,nonglyModPos)
 
