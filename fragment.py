@@ -163,45 +163,79 @@ def swapAA(pepseq,swapoption='random'):
         raise
     return(pepseq)
 
-def decoysgp(sgp,decoypepopt='random',decoyglyopt=''):
+def decoysgp(sgp,decoypepopt='random'):
     """swap amino acid  
     
     @Syntax: 
-        newpepseq = swapAA(pepseq,option)
+        newpepseq = decoysgp(sgp,decoypepopt,decoyglyopt)
     
     @Params:
         pepseq: peptide sequence
-        option: swap option.
+        decoypepopt: decoy option for peptide 
+        decoyglyopt: decoy option for glycan
         
     @Retuns:
         newpepseq: new peptide sequence
     
     @Examples:
-     >     
+    
+      > SmallGlyPep='M<o>{n{h{s}}}GHKL<o>FLM{n{h{x}}}L';
+        decoyopt='flip';
+        decoysgp(SmallGlyPep, decoyopt)     
     
     @See also splitGlyPep    
     """ 
-    from massconstant import *
-    from numpy import *
+    import random
     
     glycan_pattern = re.compile('(?<={)[a-z]',re.UNICODE);
-    sgpelements    = splitGlyPep(sgp,decoypepopt)
-    sgppep         = swapAA(sgpelements.peptide)
+    sgpelements    = splitGlyPep(sgp)
+    numaa = len(sgpelements.peptide)
+    
+    # amino acid decoy    
+    if(decoypepopt=='random'):
+        newindex       = random.sample(range(numaa),numaa)        
+        newpepseq      = ''.join(sgpelements.peptide[i] for i in newindex);
+    elif(decoypepopt=='reverse'):
+        newpepseq         = pepseq[::-1]
+        newindex          = range(numaa-1,-1,-1)
+    else:
+        print "unknown option"
+        raise
+    
+    # update new positions for glycan and non-glycan ptm
+    newnonglycanpos_in_sgp =[]
+    newglycanpos_in_sgp = []
+    for i in range(numaa):
+        for j in range(len(nonglycanpos_in_sgp)):
+            if(newindex[i]==nonglycanpos_in_sgp[j]):
+                newnonglycanpos_in_sgp.append(i)
+        
+        for j in range(len(newglycanpos_in_sgp)):
+            if(newindex[i]==glycanpos_in_sgp[j]):
+                newglycanpos_in_sgp.append(i)
+        
+    # glycan decoy
+    glycanptm      =  sgpelements.nonglycanptm   
     
     maxmwchange = 40
     numglycans  = len(sgptest1.glycanptm)
+    newglycanptm =[]
+    glyresiduesmw = []
     for i in range(numglycans):
+        replacementstring = []
         glystring   = sgptest1.glycanptm[i]
         glyresidues = glycan_pattern.findall(glystring)
         for j in range(len(glyresidues)):
-            glyresiduesmw(j)= glyresidue_mass[glyresidues[j]]
-        glyresiduesmw = (staffordRandFixedSum(numglycans,1,1)-1./10)*maxmwchange
-        glyresiduesnewmw = glyresiduesmw + nparray(glyresiduesmw)
+            glyresiduesmw.append(glyresidue_mass[glyresidues[j]])
+        glyresiduesmw_change  = (staffordRandFixedSum(numglycans,1,1)-1./10)*maxmwchange
+        glyresiduesnewmw = glyresiduesmw_change + nparray(glyresiduesmw)
         
-       # replacementstring  = cellstr(num2str(mwchange_residues));
-       # replacementstring  = strtrim(replacementstring);
-       # glyMat(1,i).struct = regexprep(glystring,'(?<={)[a-z]',replacementstring,'once');
-
+        for j in range(len(glyresiduesnewmw)):
+            replacementstring.append(str(glyresiduesnewmw[j]))
+            newglycanptm.append(re.sub('(?<={)[a-z]',replacementstring[j],newglycanptm[i]),0)
+        
+    joinGlyPep(newpepseq,newglycanptm,newglycanpos_in_sgp,nonglyMod,newnonglycanpos_in_sgp)             
+       
   
             
 testsgp1 =  'GYM<o>KNCT<s>'
