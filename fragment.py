@@ -7,6 +7,7 @@ Created on Thu Oct 09 20:00:59 2014
 """
 import re
 import collections
+import massconstant 
 
 def splitGlyPep(sgp):
     """Split glycopeptide into peptide, glycans and non-glycan modification
@@ -178,39 +179,30 @@ def decoysgp(sgp,decoypepopt='random',decoyglyopt=''):
     @Examples:
      >     
     
-    @See also splitGlyPep
+    @See also splitGlyPep    
     """ 
+    from massconstant import *
+    from numpy import *
     
-    glycan_regex = '(?<={)[a-z]';
-    glycan_pattern = re.compile(glycan_regex,re.UNICODE);    
-    
-    sgpelements = splitGlyPep(sgp,decoypepopt)
-    sgppep      = swapAA(sgpelements.peptide)
+    glycan_pattern = re.compile('(?<={)[a-z]',re.UNICODE);
+    sgpelements    = splitGlyPep(sgp,decoypepopt)
+    sgppep         = swapAA(sgpelements.peptide)
     
     maxmwchange = 40
     numglycans  = len(sgptest1.glycanptm)
     for i in range(numglycans):
         glystring   = sgptest1.glycanptm[i]
         glyresidues = glycan_pattern.findall(glystring)
-        for j in glyresidues:
-            glyresiduesmw(j)= glycanMW(glyresidue[j])
-            
-#maxmwchange = 50;
-#for i = 1: numglycans
-#    glystring     = glyMat(1,i).struct; 
-#    glyresidues   = regexp(glystring,'(?<={)[a-z]','match');
-#    glyresiduesmw = zeros(glyMat(1,i).len,1);
-#    for j = 1 : glyMat(1,i).len
-#       glyresiduesmw(j)=Glycan.glycanMSMap(glyresidues{j});
-#    end
-#    mwchange_residues  = randfixedsum(glyMat(1,i).len,1,0,-1,1)*maxmwchange;
-#    mwchange_residues  = mwchange_residues + glyresiduesmw;  
-#    
-#    replacementstring  = cellstr(num2str(mwchange_residues));
-#    replacementstring  = strtrim(replacementstring);
-#    glyMat(1,i).struct = regexprep(glystring,'(?<={)[a-z]',replacementstring,'once');
-#end
-    
+        for j in range(len(glyresidues)):
+            glyresiduesmw(j)= glyresidue_mass[glyresidues[j]]
+        glyresiduesmw = (staffordRandFixedSum(numglycans,1,1)-1./10)*maxmwchange
+        glyresiduesnewmw = glyresiduesmw + nparray(glyresiduesmw)
+        
+       # replacementstring  = cellstr(num2str(mwchange_residues));
+       # replacementstring  = strtrim(replacementstring);
+       # glyMat(1,i).struct = regexprep(glystring,'(?<={)[a-z]',replacementstring,'once');
+
+  
             
 testsgp1 =  'GYM<o>KNCT<s>'
 sgptest1 = splitGlyPep(testsgp1) 
