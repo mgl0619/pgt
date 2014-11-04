@@ -9,7 +9,7 @@ Created on Wed Oct 15 22:30:11 2014
 
 import unittest
 from fragment import splitGlyPep
- 
+
 class splitTest(unittest.TestCase):
     
     def setUp(self):
