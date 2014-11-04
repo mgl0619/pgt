@@ -99,16 +99,16 @@ def joinGlyPep(pep,gly,glyPos,nonglyMod,nonglyModPos):
         sgp = '';
         
         for i in range(len(pep)):
-           print i  
+          # print i  
            sgp = sgp + pep[i]
            
            ismodadded = 0;
            for k in range(len(nonglyModPos)) :
                singlemodpos = nonglyModPos[k]
-               print singlemodpos
+             #  print singlemodpos
                if(i==singlemodpos):
                    sgp = sgp + '<'+nonglyMod[k]+'>'                 
-                   print sgp
+                   #print sgp
                    ismodadded = 1
                    break
            if(ismodadded==1):
@@ -124,7 +124,7 @@ def joinGlyPep(pep,gly,glyPos,nonglyMod,nonglyModPos):
                if(i==singleglypos):
                    sgp = sgp + gly[j]
                    isglyadded = 1                   
-                   print sgp
+                  # print sgp
                    break
                
            if(isglyadded==1):
@@ -159,7 +159,7 @@ def swapAA(pepseq,swapoption='random'):
     elif(swapoption=='reverse'):
         pepseq = pepseq[::-1]
     else:
-        print "unknown optioin"
+        print "unknown option"
         raise
     return(pepseq)
 
@@ -186,7 +186,7 @@ def decoysgp(sgp,decoypepopt='random'):
     @See also splitGlyPep    
     """ 
     import random
-    import numpy
+    import numpy as np
     
     glycan_pattern = re.compile('(?<={)[a-z]',re.UNICODE);
     sgpelements    = splitGlyPep(sgp)
@@ -206,36 +206,40 @@ def decoysgp(sgp,decoypepopt='random'):
     # update new positions for glycan and non-glycan ptm
     newnonglycanpos_in_sgp =[]
     newglycanpos_in_sgp = []
-    numglycan = len(sgpelements.glycanpos_in_sgp)
-    numnonglycanptm = len(sgpelements.nonglycanpos_in_sgp)
+    numglycan = len(sgpelements.glycanptm)
+    numnonglycanptm = len(sgpelements.nonglycanptm)
     for i in range(numaa):
         for j in range(numnonglycanptm):
-            if(newindex[i]==sgpelements.nonglycanpos_in_sgp[j]):
+            if(newindex[i]==sgpelements.nonglycanpos[j]):
                 newnonglycanpos_in_sgp.append(i)
         
         for j in range(numglycan):
-            if(newindex[i]==sgpelements.glycanpos_in_sgp[j]):
+            if(newindex[i]==sgpelements.glycanpos[j]):
                 newglycanpos_in_sgp.append(i)
-        
+
     # glycan decoy
     maxmwchange = 40
     numglycans  = len(sgpelements.glycanptm)
     newglycanptm =[]
-    glyresiduesmw = []
+    
     for i in range(numglycans):
         replacementstring = []
+        glyresiduesmw = []
         glystring   = sgpelements.glycanptm[i]
         glyresidues = glycan_pattern.findall(glystring)
-        for j in range(len(glyresidues)):
-            glyresiduesmw.append(massconstant.glycanresidue_massglycanresidue_mass[glyresidues[j]])
-        glyresiduesmw_change  = (massconstant.staffordRandFixedSum(numglycans,1,1)-1./10)*maxmwchange
-        glyresiduesnewmw = glyresiduesmw_change + numpy.nparray(glyresiduesmw)
-        
-        for j in range(len(glyresiduesnewmw)):
-            replacementstring.append(str(glyresiduesnewmw[j]))
-            newglycanptm.append(re.sub('(?<={)[a-z]',replacementstring[j],newglycanptm[i]),0)
-        
-    newsgp=joinGlyPep(newpepseq,newglycanptm,newglycanpos_in_sgp,nonglyMod,newnonglycanpos_in_sgp)             
+        nummono = len(glyresidues)
+        for j in range(nummono):
+            glyresiduesmw.append(massconstant.glycanresidue_mass[glyresidues[j]])
+        glyresiduesmw_change  = (massconstant.staffordRandFixedSum(nummono,1,1)-1./10)*maxmwchange
+        glyresiduesmwarray    = np.array(glyresiduesmw,ndmin=2)
+        glyresiduesnewmw      = glyresiduesmw_change + glyresiduesmwarray
+
+        for j in range(nummono):
+            replacementstring.append(str(glyresiduesnewmw[0,j]))
+            glystring=re.sub('(?<={)[a-z]',replacementstring[j],glystring,1)
+            
+        newglycanptm.append(glystring)
+    newsgp=joinGlyPep(newpepseq,newglycanptm,newglycanpos_in_sgp,sgpelements.nonglycanptm,newnonglycanpos_in_sgp)             
     return(newsgp)   
   
             
@@ -261,4 +265,4 @@ nonglyMod    = ['o','s']
 nonglyModPos = [2,6]    
 sgptest      = joinGlyPep(pep,gly,glyPos,nonglyMod,nonglyModPos)
 aaseq2       = swapAA(pep,'random')
-newsegp      = decoysgp(testsgp1)
+newsgp      = decoysgp(testsgp2)
