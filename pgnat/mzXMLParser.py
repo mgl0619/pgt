@@ -30,9 +30,8 @@ import zlib
 import base64
 import numpy as np
 import sys
+import MSScan
 
-
-                               
 __dataProcessingInfo_fieldNames = []
 
 def _decode_base64_data_array(source, dtype, is_compressed):
@@ -61,37 +60,16 @@ def _decode_base64_data_array(source, dtype, is_compressed):
 def mzxmlParser_xml(infile):
     return etree.parse(infile)
     
-def fast_iter(context,func,*args):
-    xmlInfo = {}
-    try:
-        for event, elem in context:            
-            xmlInfoNew = func(elem, *args)
-            xmlInfo.update(xmlInfoNew)
-            elem.clear()
-            while elem.getprevious() is not None:
-                del elem.getparent()[0]
-        del context
-    except:
-         print 'syntax error'
-         e = sys.exc_info()[0]
-         print e
-         return None
-    return xmlInfo
-
-def scanInfo(elem, tagName):
-    xmlInfo = {};
-    if((etree.QName(elem.tag)).localname==tagName):
-       for child in elem:
-           #print 'attrib=', child.attrib
-           xmlInfo[(etree.QName(child.tag)).localname] = dict(child.attrib)
-    return xmlInfo    
-                
 class mzXMLParser():
-     __instrumentInfo_fieldNames = ["msManufacturer","msModel","msIonisation",\
-                               "msDetector","msMassAnalyzer","softwareVersion",\
-                               "softwareName","softwareType"]
+     __instrumentMSInfo_fieldNames = ["msManufacturer","msModel","msIonisation",\
+                               "msDetector","msMassAnalyzer","msResolution"]
+     __instrumentSWInfo_fieldNames = ["softwareVersion","softwareName","softwareType"]
+     
+     __instrumentOPInfo_fieldNames = ["operatorFirstName","operatorLastName","operatorPhone"]
 
-     __dataProcessing_fieldNames = ["softwareVersion","softwareType","softwareName"]     
+     __dataProcessingSWInfo_fieldNames = ["softwareVersion","softwareType","softwareName"]
+     
+     __dataProcessingDataInfo_fieldNames = ["centroided","deisotoped","intensityCutoff","spotIntegration"]     
      
      #infile: input file name including path
      _inFile = None
@@ -123,6 +101,49 @@ class mzXMLParser():
      def dataProcessingInfo(self):
          """ Data Processing Info. Property"""
          return self._dataProcessingInfo
+         
+     def _fast_iter(self,context,func,isSingleItem=True,eventStrList=['start'],*args):
+        try:
+            listOfXMLInfo = []
+            for event, elem in context:
+                for eventstr in eventStrList:
+                    if event == eventstr:
+                        xmlInfo = func(elem, *args)
+                        #print xmlInfoNew
+                        if isSingleItem:
+                            if xmlInfo:
+                                del context
+                                return xmlInfo
+                            else:
+                                elem.clear()
+                                while elem.getprevious() is not None:
+                                    del elem.getparent()[0]
+                        else:
+                            listOfXMLInfo.append(xmlInfo)
+                            print listOfXMLInfo
+            del context
+            return listOfXMLInfo
+        except:
+             print 'syntax error'
+             e = sys.exc_info()[0]
+             print e
+             return {}    
+
+     def _scanInfo(elem, tagName):
+        xmlInfo = {};
+        if((etree.QName(elem.tag)).localname==tagName):
+           # retrieve properties of the tag
+           eleattrib = dict(elem.attrib)
+           if eleattrib:
+               for key,value in eleattrib.items():
+                   xmlInfo[key] = value
+           xmlInfo['text'] = elem.text
+           for child in elem:
+               #print 'attrib=', child.attrib
+               childName = (etree.QName(child.tag)).localname
+               xmlInfo[childName] = dict(child.attrib)
+               xmlInfo[(childName+'text')] = child.text
+        return xmlInfo
     
      def _setInstrumentMSInfo(self,msKey,instrumentInfo):
          if instrumentInfo.get(msKey,None):
@@ -136,27 +157,46 @@ class mzXMLParser():
          else:
              self._instrumentInfo[msKey]= None
              
-     def _setDataProcessingInfo(self,msKey,dataProcessingInfo):
+     def _setInstrumentOPInfo(self,msKey,instrumentInfo):
+         if instrumentInfo.get(u'operator',None):
+             self._instrumentInfo[msKey]=(instrumentInfo.get('operator')).get(msKey[8:],None)
+         else:
+             self._instrumentInfo[msKey]= None        
+             
+     def _setDataProcessingMSInfo(self,msKey,dataProcessingInfo):
          if dataProcessingInfo.get('software',None):
+             print msKey[8:]
              self._dataProcessingInfo[msKey]=(dataProcessingInfo.get('software')).get(msKey[8:].lower(),None)
          else:
-             self._dataProcessingInfo[msKey]= None        
-    
-        
+             self._dataProcessingInfo[msKey]= None
+             
+     def _setDataProcessingDataInfo(self,msKey,dataProcessingInfo):
+         self._dataProcessingInfo[msKey]=dataProcessingInfo.get(msKey,None)
+             
      def _scanInstrumentInfo(self):
-         instrumentInfo = fast_iter(etree.iterparse(infile,events = \
-                                 ("start","end")),scanInfo,"msInstrument")
-         for msKey in self.__instrumentInfo_fieldNames[0:4]:
+         instrumentInfo = self._fast_iter(etree.iterparse(self.inFile,events = \
+                                 ("start","end")),self._scanInfo,True,['start'],"msInstrument")
+        
+         for msKey in self.__instrumentMSInfo_fieldNames:
              self._setInstrumentMSInfo(msKey,instrumentInfo)
         
-         for msKey in self.__instrumentInfo_fieldNames[5:8]:
+         for msKey in self.__instrumentSWInfo_fieldNames:
              self._setInstrumentSWInfo(msKey,instrumentInfo)
+             
+         for msKey in self.__instrumentOPInfo_fieldNames:
+             self._setInstrumentSWInfo(msKey,instrumentInfo)
+             
      
      def _scanDataProcessingInfo(self):
-         dataProcessingInfo = fast_iter(etree.iterparse(infile,events = \
-                                 ("start","end")),scanInfo,"dataProcessing")
-         for msKey in self.__dataProcessing_fieldNames:
-             self._setDataProcessingInfo(msKey,dataProcessingInfo)
+         dataProcessingInfo = self._fast_iter(etree.iterparse(self.inFile,events = \
+                                 ("start","end")),self._scanInfo,True,['start'],"dataProcessing")
+         print dataProcessingInfo                        
+                                 
+         for msKey in self.__dataProcessingDataInfo_fieldNames:
+             self._setDataProcessingDataInfo(msKey,dataProcessingInfo)
+                        
+         for msKey in self.__dataProcessingSWInfo_fieldNames:
+             self._setDataProcessingMSInfo(msKey,dataProcessingInfo)
     
      def __init__(self,path=None):
          if path:
@@ -166,11 +206,52 @@ class mzXMLParser():
              print self.instrumentInfo
              print self.dataProcessingInfo
     
-    
-#    def retrieveScanData(self,scannum):
-if  __name__ == '__main__':
-    emptyparser = mzXMLParser()
+     def readScanData(self,scanNum):
+         context = etree.iterparse(self.inFile,events = ("start","end"))
+         for event, elem in context:
+             if event == 'start':
+                  if((etree.QName(elem.tag)).localname=='scan'):
+                     # retrieve properties of the tag
+                     eleattrib = dict(elem.attrib)
+                     if eleattrib['num']==str(scanNum):
+                         msScan = MSScan
+                         msScan.scanNum = scanNum
+                         msScan.retentionTime = eleattrib['retentionTime']
+                         msScan.lowMz = eleattrib['lowMz']
+                         msScan.highMz = eleattrib['highMz']
+                         msScan.polarity = eleattrib['polarity']
+                         msScan.basePeakMz = eleattrib['basePeakMz']
+                         msScan.basePeakIntensity = eleattrib['basePeakIntensity']
+                         msScan.totIonCurrent = eleattrib['totIonCurrent']
+                         msScan.msLevel = eleattrib['msLevel']
+                            
+                         for child in elem:
+                            childName = (etree.QName(child.tag)).localname
+                            if childName == 'peaks' :
+                                eleattrib = dict(child.attrib)
+                                msScan.precision = eleattrib['precision']
+                                msScan.msIntensity = child.text
+                         del context
+                         return msScan
+                     else:
+                         elem.clear()
+                         while elem.getprevious() is not None:
+                             del elem.getparent()[0]    
+                  else:
+                      elem.clear()
+                      while elem.getprevious() is not None:
+                          del elem.getparent()[0]         
+         return None
+         
+def main():
     infile   = 'test.mzXML'
     testmzXMLParser = mzXMLParser(infile)
+    scan2 = testmzXMLParser.readScanData(6586)
+    print scan2.msIntensity
+    print 'end'
+       
+#    def retrieveScanData(self,scannum):
+if  __name__ == '__main__':
+    main()
           
     
